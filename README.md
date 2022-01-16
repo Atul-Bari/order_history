@@ -19,7 +19,9 @@
 Install latest [go-1.17](https://golang.org/doc/install) version
 
 ### Building
+ ``` sh
 go mod init flink
 go mod tidy
 go build
 ./flink
+ ```
