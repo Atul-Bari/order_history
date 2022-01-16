@@ -117,7 +117,7 @@ func HandelRequest() {
 func main() {
 	fmt.Println("Main")
 	mu.Lock()
-	OrderMap["123"] = &Order{Order_id: "123", History: []Location{{Lat: 12.34, Lng: 56.75}, {Lat: 13.34, Lng: 78.74}}}
+	OrderMap["abc123"] = &Order{Order_id: "abc123", History: []Location{{Lat: 12.34, Lng: 56.75}, {Lat: 13.34, Lng: 78.74}}}
 	mu.Unlock()
 	HandelRequest()
 }

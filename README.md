@@ -25,3 +25,11 @@ go mod tidy
 go build
 ./flink
  ```
+
+### EXAMPLE Req
+(GET)
+ ``` sh
+http://localhost:8080/location/abc123 
+
+./flink
+ ```
