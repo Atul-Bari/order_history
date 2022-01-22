@@ -10,6 +10,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type ErrorMsg struct {
+	Msg string `json:"msg"`
+}
+
 func DeleteHistory(w http.ResponseWriter, r *http.Request) {
 	log.Println("In DeleteHistory")
 	vars := mux.Vars(r)
@@ -17,12 +21,12 @@ func DeleteHistory(w http.ResponseWriter, r *http.Request) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	for i, v := range OrderMap {
-		if key == i {
-			v.History = nil
-		}
+	if v, ok := OrderMap[key]; ok {
+		v.History = []Location{}
+		json.NewEncoder(w).Encode(v)
+	} else {
+		json.NewEncoder(w).Encode(ErrorMsg{Msg: "Invalid order_id"})
 	}
-
 }
 
 func AppendHistory(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +36,8 @@ func AppendHistory(w http.ResponseWriter, r *http.Request) {
 
 	reqBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Println("Err: ", err)
+		log.Println("i/o Read err: ", err)
+		json.NewEncoder(w).Encode(ErrorMsg{Msg: "i/o read error"})
 		return
 	}
 
@@ -40,16 +45,17 @@ func AppendHistory(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(reqBody, &location)
 	if err != nil {
 		log.Println("Location Unmarshal err: ", err)
+		json.NewEncoder(w).Encode(ErrorMsg{Msg: "Invalid input"})
 		return
 	}
-
 	mu.Lock()
 	defer mu.Unlock()
-	for i, v := range OrderMap {
-		if key == i {
-			v.History = append(v.History, location)
-		}
+	if v, ok := OrderMap[key]; ok {
+		v.History = append([]Location{location}, v.History...)
+	} else {
+		OrderMap[key] = &Order{Order_id: key, History: []Location{location}}
 	}
+	json.NewEncoder(w).Encode(location)
 
 }
 
@@ -63,38 +69,28 @@ func GetHistory(w http.ResponseWriter, r *http.Request) {
 	defer mu.Unlock()
 	if max == "" {
 		if v, ok := OrderMap[key]; ok {
-			var res Order
-			for i := len(v.History) - 1; i >= 0; i-- {
-				res.History = append(res.History, v.History[i])
-			}
-			json.NewEncoder(w).Encode(res)
+			json.NewEncoder(w).Encode(v)
+		} else {
+			json.NewEncoder(w).Encode(ErrorMsg{Msg: "Invalid order_id"})
 		}
 	} else {
 		intMax, err := strconv.Atoi(max)
 		if err != nil || intMax == 0 {
 			log.Println("Max is invalid")
+			json.NewEncoder(w).Encode(ErrorMsg{Msg: "Invalid input"})
 			return
 		}
 		var res Order
 		if v, ok := OrderMap[key]; ok {
 			if len(v.History) > intMax {
 				res.Order_id = v.Order_id
-				cnt := 0
-				for i := len(v.History) - 1; i >= 0; i-- {
-					if cnt >= intMax {
-						break
-					}
-					res.History = append(res.History, v.History[i])
-					cnt += 1
-				}
+				res.History = v.History[:intMax]
 				json.NewEncoder(w).Encode(res)
 			} else {
-				for i := len(v.History) - 1; i >= 0; i-- {
-					res.History = append(res.History, v.History[i])
-				}
-				json.NewEncoder(w).Encode(res)
+				json.NewEncoder(w).Encode(v)
 			}
-
+		} else {
+			json.NewEncoder(w).Encode(ErrorMsg{Msg: "Invalid order_id"})
 		}
 	}
 
